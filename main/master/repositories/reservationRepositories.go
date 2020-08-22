@@ -2,7 +2,10 @@ package repositories
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 
+	"github.com/disebud/reservation-hotel/main/master/constanta"
 	"github.com/disebud/reservation-hotel/main/master/models"
 )
 
@@ -14,20 +17,39 @@ func InitReservationRepoImpl(db *sql.DB) ReservationRepository {
 	return &ReservationRepoImpl{db}
 }
 
+// func (s ReservationRepoImpl) GetAllReservation() ([]*models.Room, error) {
 func (s ReservationRepoImpl) GetAllReservation() ([]*models.Room, error) {
+
 	dataReservationRoom := []*models.Room{}
-	query := `SELECT mr.id_room , mr.name_room,mr.floor_location,mr.price,mrs.name_status_room
-	FROM
-		m_room mr
-			JOIN
-		m_status_room mrs ON mr.status_room = mrs.id_status_room  ORDER BY mr.id_room ASC;`
+	query := fmt.Sprintf(`SELECT mr.id_room , mr.name_room,mr.floor_location,mr.price,mrs.id_status_room,mrs.name_status_room
+	FROM m_room mr JOIN m_status_room mrs ON mr.status_room = mrs.id_status_room  ;`)
 	data, err := s.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	for data.Next() {
 		Reservation := models.Room{}
-		var err = data.Scan(&Reservation.IdRoom, &Reservation.NameRoom, &Reservation.Location, &Reservation.Price, &Reservation.Status)
+		var err = data.Scan(&Reservation.IdRoom, &Reservation.NameRoom, &Reservation.Location, &Reservation.Price, &Reservation.IdStatus, &Reservation.Status)
+		if err != nil {
+			return nil, err
+		}
+		dataReservationRoom = append(dataReservationRoom, &Reservation)
+	}
+
+	return dataReservationRoom, nil
+}
+func (s ReservationRepoImpl) GetAllReservationPagination(orderBy, sort, page, limit string) ([]*models.Room, error) {
+
+	dataReservationRoom := []*models.Room{}
+	query := fmt.Sprintf(`SELECT mr.id_room , mr.name_room,mr.floor_location,mr.price,mrs.id_status_room,mrs.name_status_room
+	FROM m_room mr JOIN m_status_room mrs ON mr.status_room = mrs.id_status_room  ORDER BY %s %s LIMIT %s,%s;`, orderBy, sort, page, limit)
+	data, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	for data.Next() {
+		Reservation := models.Room{}
+		var err = data.Scan(&Reservation.IdRoom, &Reservation.NameRoom, &Reservation.Location, &Reservation.Price, &Reservation.IdStatus, &Reservation.Status)
 		if err != nil {
 			return nil, err
 		}
@@ -43,12 +65,15 @@ func (s *ReservationRepoImpl) CreateReservation(Reservation models.Room) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO m_room VALUES (?, ?, ?, ?, ?)")
+	log.Println(`Data`, Reservation)
+
+	query := constanta.CREATERESERVATION
+	stmt, err := tx.Prepare(query)
 	if err != nil {
 		return err
 	}
 
-	_, err = stmt.Exec(Reservation.IdRoom, Reservation.NameRoom, Reservation.Location, Reservation.Price, Reservation.Status)
+	_, err = stmt.Exec(Reservation.IdRoom, Reservation.NameRoom, Reservation.Location, Reservation.Price, Reservation.IdStatus)
 	if err != nil {
 		return tx.Rollback()
 	}
@@ -104,18 +129,18 @@ func (s ReservationRepoImpl) DeleteReservationByIdRoom(ReservationIdRoom string)
 
 }
 
-func (s *ReservationRepoImpl) UpdateInfoReservationRoom(id string, Reservation models.Room) error {
+func (s ReservationRepoImpl) UpdateInfoReservationRoom(id string, Reservation models.Room) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
-
-	stmt, err := tx.Prepare(`UPDATE m_room SET name_room = ?,floor_locatiion=?, price = ?, status_room = ? WHERE id_room = ?`)
+	stmt, err := tx.Prepare(`UPDATE m_room SET name_room = ?, floor_location = ?, price = ?, status_room = ? WHERE id_room = ?`)
 	if err != nil {
 		return err
 	}
+	fmt.Println("Data", Reservation)
 
-	_, err = stmt.Exec(Reservation.NameRoom, Reservation.Location, Reservation.Price, Reservation.Status, Reservation.IdRoom)
+	_, err = stmt.Exec(Reservation.NameRoom, Reservation.Location, Reservation.Price, Reservation.IdStatus, Reservation.IdRoom)
 	if err != nil {
 		return tx.Rollback()
 	}

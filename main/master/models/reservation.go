@@ -25,3 +25,9 @@ type Customer struct {
 	Telephone    int    `json:"telephone"`
 	Email        string `json:"email"`
 }
+
+type Rooms []Room
+type TotalRoom struct {
+	TotalItem int   `json:"totalitem"`
+	Room      Rooms `json:"room"`
+}

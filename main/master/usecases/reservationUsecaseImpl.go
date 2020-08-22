@@ -3,7 +3,6 @@ package usecases
 import (
 	"github.com/disebud/reservation-hotel/main/master/models"
 	"github.com/disebud/reservation-hotel/main/master/repositories"
-	"github.com/disebud/reservation-hotel/main/master/utils"
 )
 
 type ReservationUsecaseImpl struct {
@@ -12,6 +11,15 @@ type ReservationUsecaseImpl struct {
 
 func InitReservationUsecase(ReservationRepo repositories.ReservationRepository) ReservationUseCase {
 	return &ReservationUsecaseImpl{ReservationRepo}
+}
+
+func (s ReservationUsecaseImpl) GetAllReservationsPagination(orderBy, sort, page, limit string) ([]*models.Room, error) {
+	Reservation, err := s.ReservationRepo.GetAllReservationPagination(orderBy, sort, page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return Reservation, nil
 }
 
 func (s ReservationUsecaseImpl) GetAllReservations() ([]*models.Room, error) {
@@ -47,11 +55,15 @@ func (s ReservationUsecaseImpl) DeleteReservationByIdRoom(IdRoom string) (*model
 }
 
 func (s ReservationUsecaseImpl) CreateReservation(Reservation models.Room) error {
-	err := utils.ValidateInputNotNil(Reservation.NameRoom, Reservation.Location, Reservation.Price)
-	if err != nil {
-		return err
-	}
-	err = s.ReservationRepo.CreateReservation(Reservation)
+	// err := utils.ValidateInputLenCharacter(3, 6, Reservation.IdRoom)
+	// if err != nil {
+	// 	return err
+	// }
+	// err1 := utils.ValidateInputNotNil(Reservation.NameRoom, Reservation.Location, Reservation.Price)
+	// if err1 != nil {
+	// 	return err
+	// }
+	err := s.ReservationRepo.CreateReservation(Reservation)
 	if err != nil {
 		return err
 	}

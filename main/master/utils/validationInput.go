@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"strings"
 )
 
 func ValidateInputNotNil(data ...interface{}) error {
@@ -14,15 +13,6 @@ func ValidateInputNotNil(data ...interface{}) error {
 			return errors.New("Data Input Cannot 0")
 		case nil:
 			return errors.New("Input cannot be nil")
-		}
-	}
-	return nil
-}
-
-func ValidateInputNotSymbol(data ...interface{}) error {
-	for _, value := range data {
-		if strings.ContainsAny(value.(string), "!@#$%^&*()_+{}|:?><\"") { // containsany yaitu mengecek symbol yg kita tidak mau
-			return errors.New("Input cannot containsAny symbol")
 		}
 	}
 	return nil

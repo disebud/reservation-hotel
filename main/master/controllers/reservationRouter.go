@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -18,7 +19,8 @@ type ReservationHandler struct {
 
 func ReservationController(r *mux.Router, service usecases.ReservationUseCase) {
 	ReservationHandler := ReservationHandler{service}
-	r.HandleFunc("/reservation/info", ReservationHandler.ListInfoRoom).Methods(http.MethodGet)
+	r.HandleFunc("/reservation/info", ReservationHandler.ListInfoRoomPagination).Queries("orderBy", "{orderBy}", "sort", "{sort}", "page", "{page}", "limit", "{limit}").Methods(http.MethodGet)
+	r.HandleFunc("/reservations", ReservationHandler.ListInfoRoom).Methods(http.MethodGet)
 	r.HandleFunc("/reservation/{id}", ReservationHandler.GetReservationIdRoom).Methods(http.MethodGet)
 	r.HandleFunc("/reservation/status/{status}", ReservationHandler.GetReservationStatus).Methods(http.MethodGet)
 	r.HandleFunc("/reservation", ReservationHandler.CreateReservation).Methods(http.MethodPost)
@@ -26,7 +28,38 @@ func ReservationController(r *mux.Router, service usecases.ReservationUseCase) {
 	r.HandleFunc("/reservation/{id}", ReservationHandler.DeleteReservationID).Methods(http.MethodDelete)
 }
 
+func (e ReservationHandler) ListInfoRoomPagination(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	fmt.Println(vars)
+
+	orderBy, _ := vars["orderBy"]
+	sort, _ := vars["sort"]
+	page, _ := vars["page"]
+	limit, _ := vars["limit"]
+	// log.Println(infinfoType)
+	currentDate := time.Now()
+	Reservations, err := e.ReservationUseCase.GetAllReservationsPagination(orderBy, sort, page, limit)
+	if err != nil {
+		w.Write([]byte("Data Not Found"))
+	}
+	response := utils.Response{}
+	response.Status = http.StatusOK
+	response.Message = "All Data Info Room Reservation"
+	response.Date = "Today / " + currentDate.Format("02-January-2006")
+	response.Result = Reservations
+	byteOfReservations, err := json.Marshal(response)
+	if err != nil {
+		w.Write([]byte("Oops something when wrong"))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(byteOfReservations))
+}
+
 func (e ReservationHandler) ListInfoRoom(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	fmt.Println(vars)
+
+	// log.Println(infinfoType)
 	currentDate := time.Now()
 	Reservations, err := e.ReservationUseCase.GetAllReservations()
 	if err != nil {
@@ -36,7 +69,7 @@ func (e ReservationHandler) ListInfoRoom(w http.ResponseWriter, r *http.Request)
 	response.Status = http.StatusOK
 	response.Message = "All Data Info Room Reservation"
 	response.Date = "Today / " + currentDate.Format("02-January-2006")
-	response.Data = Reservations
+	response.Result = Reservations
 	byteOfReservations, err := json.Marshal(response)
 	if err != nil {
 		w.Write([]byte("Oops something when wrong"))
@@ -75,7 +108,7 @@ func (e ReservationHandler) GetReservationIdRoom(w http.ResponseWriter, r *http.
 	response.Status = http.StatusAccepted
 	response.Message = " Data Reservation id Room = " + vars["id"]
 	response.Date = "Today / " + currentDate.Format("02-January-2006")
-	response.Data = Employees
+	response.Result = Employees
 	byteOfReservations, err := json.Marshal(response)
 	if err != nil {
 		w.Write([]byte("Oops try again"))
@@ -93,7 +126,7 @@ func (e ReservationHandler) GetReservationStatus(w http.ResponseWriter, r *http.
 	response := utils.Response{}
 	response.Status = http.StatusAccepted
 	response.Message = "All Data Reservation id Status : " + vars["status"]
-	response.Data = Reservations
+	response.Result = Reservations
 	byteOfReservations, err := json.Marshal(response)
 	if err != nil {
 		w.Write([]byte("Oops try again"))
@@ -103,15 +136,16 @@ func (e ReservationHandler) GetReservationStatus(w http.ResponseWriter, r *http.
 }
 
 func (e ReservationHandler) DeleteReservationID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	_, err := e.ReservationUseCase.DeleteReservationByIdRoom(vars["id"])
+	param := mux.Vars(r)
+	_, err := e.ReservationUseCase.DeleteReservationByIdRoom(param["id"])
 	if err != nil {
 		w.Write([]byte("Data Not Found"))
 	}
 
 	w.Header().Set("content-type", "application/json")
-	log.Println("Delete successful")
-	w.Write([]byte("Delete successful"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Delete Data successful , Room ID = " + param["id"]))
+	log.Println("Delete Data successful , Room ID = " + param["id"])
 }
 
 func (e ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +154,7 @@ func (e ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.Println(err)
 	}
-
+	log.Println(re)
 	err = e.ReservationUseCase.CreateReservation(re)
 	if err != nil {
 		log.Println(err)
@@ -131,13 +165,21 @@ func (e ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Req
 }
 
 func (e ReservationHandler) UpdateReservations(w http.ResponseWriter, r *http.Request) {
-	var re models.Room
+	currentDate := time.Now()
+	date := "Today / " + currentDate.Format("02-January-2006")
+	var reservation models.Room
 	param := mux.Vars(r)
-	_ = json.NewDecoder(r.Body).Decode(&re)
-	err := e.ReservationUseCase.UpdateInfoReservationRoom(param["id"], re)
+	err := json.NewDecoder(r.Body).Decode(&reservation)
+	err = e.ReservationUseCase.UpdateInfoReservationRoom(param["id"], reservation)
 	if err != nil {
+		w.Write([]byte("Data not found !!"))
 		log.Println(err)
+		return
 	}
+	byteOfInfo, _ := json.Marshal(utils.GenerateResponse(http.StatusOK, "Success Update", date, reservation))
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(byteOfInfo)
+	w.Write([]byte("\n" + "Update Data successful , NIK = " + param["id"]))
 	log.Println("Update Data successful , NIK = " + param["id"])
-	w.Write([]byte("Update Data successful , NIK = " + param["id"]))
 }

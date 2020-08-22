@@ -33,7 +33,7 @@ func (e BookingHandler) ListInfoRoom(w http.ResponseWriter, r *http.Request) {
 	response.Status = http.StatusOK
 	response.Message = "All Data Info Room Booking"
 	response.Date = "Today / " + currentDate.Format("02-January-2006")
-	response.Data = Bookings
+	response.Result = Bookings
 	byteOfBookings, err := json.Marshal(response)
 	if err != nil {
 		w.Write([]byte("Oops something when wrong"))
